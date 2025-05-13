@@ -12,10 +12,24 @@ const app = express();
 // Middleware untuk logging
 app.use(morgan("dev"));
 
+// Get allowed origins from env variables
+const getAllowedOrigins = () => {
+  if (process.env.NODE_ENV === "production") {
+    // If ALLOWED_ORIGINS is set, use it (comma-separated list)
+    if (process.env.ALLOWED_ORIGINS) {
+      return process.env.ALLOWED_ORIGINS.split(',');
+    }
+    // Fall back to FRONTEND_URL or default Azure URL
+    return [process.env.FRONTEND_URL || "https://your-azure-frontend-app.azurewebsites.net"];
+  }
+  // Default development origins
+  return ["http://localhost:3000", "http://localhost:5173"];
+};
+
 // Konfigurasi CORS
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:5173"],
+    origin: getAllowedOrigins(),
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
