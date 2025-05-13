@@ -57,17 +57,27 @@ app.get("/debug", (req, res) => {
 const getAllowedOrigins = () => {
   console.log(`[${new Date().toISOString()}] CORS configuration: NODE_ENV=${process.env.NODE_ENV}`);
   
+  // Always include the production domain, regardless of environment
+  const productionDomain = "https://brown-rail-652226.hostingersite.com";
+  
   if (process.env.NODE_ENV === "production") {
     if (process.env.ALLOWED_ORIGINS) {
       console.log(`Using ALLOWED_ORIGINS: ${process.env.ALLOWED_ORIGINS}`);
-      return process.env.ALLOWED_ORIGINS.split(',');
+      const origins = process.env.ALLOWED_ORIGINS.split(',');
+      // Ensure production domain is included
+      if (!origins.includes(productionDomain)) {
+        origins.push(productionDomain);
+      }
+      return origins;
     }
-    const frontendUrl = process.env.FRONTEND_URL || "https://brown-rail-652226.hostingersite.com/";
+    const frontendUrl = process.env.FRONTEND_URL || productionDomain;
     console.log(`Using FRONTEND_URL: ${frontendUrl}`);
     return [frontendUrl];
   }
-  console.log("Using development origins");
-  return ["*"]; // Development mode - allow all origins for testing
+  
+  // For development or unset NODE_ENV, include both localhost and production domain
+  console.log("Using development origins plus production domain");
+  return ["http://localhost:3000", "http://localhost:5173", productionDomain];
 };
 
 // Konfigurasi CORS
@@ -77,10 +87,26 @@ try {
   
   app.use(
     cors({
-      origin: origins,
+      origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps, curl requests)
+        if (!origin) return callback(null, true);
+        
+        const allowedOrigins = getAllowedOrigins();
+        
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        
+        console.log(`[${new Date().toISOString()}] CORS rejected origin: ${origin}`);
+        
+        // For debugging purposes, still allow in all environments
+        return callback(null, true);
+      },
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
+      preflightContinue: false,
+      optionsSuccessStatus: 204
     })
   );
   console.log(`[${new Date().toISOString()}] CORS configured successfully`);
