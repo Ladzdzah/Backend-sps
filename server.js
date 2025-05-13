@@ -62,7 +62,7 @@ const getAllowedOrigins = () => {
       console.log(`Using ALLOWED_ORIGINS: ${process.env.ALLOWED_ORIGINS}`);
       return process.env.ALLOWED_ORIGINS.split(',');
     }
-    const frontendUrl = process.env.FRONTEND_URL || "https://your-azure-frontend-app.azurewebsites.net";
+    const frontendUrl = process.env.FRONTEND_URL || "https://brown-rail-652226.hostingersite.com/";
     console.log(`Using FRONTEND_URL: ${frontendUrl}`);
     return [frontendUrl];
   }
