@@ -23,6 +23,6 @@ jobs:
     - name: Deploy to Azure Web App
       uses: azure/webapps-deploy@v2
       with:
-        app-name: 'your-azure-app-name'  # Replace with your Azure app name
+        app-name: 'backend-abssps'  # Replace with your Azure app name
         publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
         package: . 
