@@ -14,12 +14,7 @@ app.use(morgan("dev"));
 
 // Health check endpoint untuk Azure (PENTING!)
 app.get("/", (req, res) => {
-  console.log(`[${new Date().toISOString()}] Health check called`);
-  res.status(200).json({ 
-    status: "OK",
-    message: "Server is running",
-    timestamp: new Date().toISOString()
-  });
+  res.status(200).json({ status: "OK", message: "Server is running" });
 });
 
 // Ping endpoint untuk keep-alive
