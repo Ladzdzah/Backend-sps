@@ -4,9 +4,9 @@ const mysql = require("mysql2/promise");
 
 const db = mysql.createPool({
   host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASS || "",
-  database: process.env.DB_NAME || "absensi_sekolah",
+  user: process.env.DB_USER || "u344296107_ladzdzah",
+  password: process.env.DB_PASS || "Mufidz69.ladzdzah",
+  database: process.env.DB_NAME || "u344296107_db_absensi",
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
