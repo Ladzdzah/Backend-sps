@@ -132,15 +132,26 @@ class AttendanceService {
     const startTimeInMinutes = startHours * 60 + startMinutes;
     const endTimeInMinutes = endHours * 60 + endMinutes;
 
-    if (currentTimeInMinutes < startTimeInMinutes || currentTimeInMinutes > endTimeInMinutes) {
-      throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${schedule.check_out_start.slice(0, 5)} - ${schedule.check_out_end.slice(0, 5)} WIB`);
+    // Add buffer time for check-out (15 minutes before and after)
+    const bufferMinutes = 15;
+    const bufferedStartTime = startTimeInMinutes - bufferMinutes;
+    const bufferedEndTime = endTimeInMinutes + bufferMinutes;
+
+    if (currentTimeInMinutes < bufferedStartTime || currentTimeInMinutes > bufferedEndTime) {
+      throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${this.formatTime(bufferedStartTime)} - ${this.formatTime(bufferedEndTime)} WIB`);
     }
 
-    const result = await AttendanceModel.updateCheckOut(userId, latitude, longitude);
-    if (result === 0) {
-      throw new Error('Tidak ada absensi masuk yang aktif');
+    // Update the model with WIB date
+    try {
+      const result = await AttendanceModel.updateCheckOut(userId, latitude, longitude);
+      if (result === 0) {
+        throw new Error('Tidak ada absensi masuk yang aktif untuk hari ini');
+      }
+      return result;
+    } catch (error) {
+      console.error('Check-out error:', error);
+      throw new Error('Gagal melakukan check-out. Silakan coba lagi atau hubungi admin.');
     }
-    return result;
   }
 
   static calculateDistance(point1, point2) {
