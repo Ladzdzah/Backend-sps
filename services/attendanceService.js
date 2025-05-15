@@ -45,13 +45,22 @@ class AttendanceService {
     }
 
     const now = new Date();
-    const currentTime = now.toTimeString().split(' ')[0];
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
+    const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+
+    const [startHours, startMinutes] = schedule.check_in_start.split(':').map(Number);
+    const [endHours, endMinutes] = schedule.check_in_end.split(':').map(Number);
     
-    if (currentTime < schedule.check_in_start || currentTime > schedule.check_in_end) {
+    const startTimeInMinutes = startHours * 60 + startMinutes;
+    const endTimeInMinutes = endHours * 60 + endMinutes;
+
+    if (currentTimeInMinutes < startTimeInMinutes || currentTimeInMinutes > endTimeInMinutes) {
       throw new Error(`Waktu absen masuk hanya diperbolehkan antara ${schedule.check_in_start.slice(0, 5)} - ${schedule.check_in_end.slice(0, 5)}`);
     }
 
-    const status = currentTime > schedule.check_in_start ? 'late' : 'present';
+    // Determine status (late or present)
+    const status = currentTimeInMinutes > startTimeInMinutes ? 'late' : 'present';
     return await AttendanceModel.create(userId, latitude, longitude, status);
   }
 
