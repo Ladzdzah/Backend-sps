@@ -1,4 +1,7 @@
 const AttendanceService = require('../services/attendanceService');
+const AttendanceScheduleModel = require('../models/attendanceScheduleModel');
+const OfficeLocationModel = require('../models/officeLocationModel');
+const AttendanceModel = require('../models/attendanceModel');
 
 const attendanceController = {
   getUserAttendance: async (req, res) => {
@@ -24,10 +27,45 @@ const attendanceController = {
   checkIn: async (req, res) => {
     try {
       const { latitude, longitude } = req.body;
+      
+      // Log request data
+      console.log('Check-in request:', {
+        userId: req.user.id,
+        latitude,
+        longitude,
+        timestamp: new Date().toISOString(),
+        headers: req.headers
+      });
+
+      // Get current schedule
+      const schedule = await AttendanceScheduleModel.get();
+      console.log('Current schedule:', schedule);
+
+      // Get office location
+      const officeLocation = await OfficeLocationModel.get();
+      console.log('Office location:', officeLocation);
+
+      // Check existing attendance
+      const today = new Date().toISOString().split('T')[0];
+      const existingAttendance = await AttendanceModel.findByUserAndDate(req.user.id, today);
+      console.log('Existing attendance:', existingAttendance);
+
       await AttendanceService.checkIn(req.user.id, latitude, longitude);
+      
+      console.log('Check-in success:', {
+        userId: req.user.id,
+        timestamp: new Date().toISOString()
+      });
+
       res.json({ message: "Absensi masuk berhasil" });
     } catch (error) {
-      console.error("Error checking in:", error);
+      console.error('Check-in error:', {
+        userId: req.user?.id,
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+
       res.status(400).json({ error: error.message });
     }
   },
