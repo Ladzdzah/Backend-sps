@@ -52,6 +52,8 @@ class AttendanceModel {
         u.full_name
       FROM attendance a
       JOIN users u ON a.user_id = u.id
+      WHERE a.check_in_time IS NOT NULL
+        AND u.role != 'admin'
       ORDER BY a.check_in_time DESC
     `);
     return rows;
