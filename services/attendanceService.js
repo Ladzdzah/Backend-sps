@@ -11,9 +11,30 @@ class AttendanceService {
     return await AttendanceModel.getAll();
   }
 
+  static getWIBTime() {
+    // Create date in UTC
+    const now = new Date();
+    // Convert to WIB (UTC+7)
+    const wibOffset = 7 * 60; // 7 hours in minutes
+    const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+    const wibMinutes = utcMinutes + wibOffset;
+    
+    // Handle day rollover
+    const wibHours = Math.floor(wibMinutes / 60) % 24;
+    const minutes = wibMinutes % 60;
+    
+    return {
+      hours: wibHours,
+      minutes: minutes,
+      totalMinutes: wibHours * 60 + minutes
+    };
+  }
+
   static async checkIn(userId, latitude, longitude) {
     // Check if already checked in today
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const wibDate = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+    const today = wibDate.toISOString().split('T')[0];
     const existingAttendance = await AttendanceModel.findByUserAndDate(userId, today);
     
     if (existingAttendance) {
@@ -44,10 +65,8 @@ class AttendanceService {
       throw new Error('Jadwal absensi belum diatur oleh admin');
     }
 
-    const now = new Date();
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
-    const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+    const wibTime = this.getWIBTime();
+    const currentTimeInMinutes = wibTime.totalMinutes;
 
     const [startHours, startMinutes] = schedule.check_in_start.split(':').map(Number);
     const [endHours, endMinutes] = schedule.check_in_end.split(':').map(Number);
@@ -55,18 +74,25 @@ class AttendanceService {
     const startTimeInMinutes = startHours * 60 + startMinutes;
     const endTimeInMinutes = endHours * 60 + endMinutes;
 
-    if (currentTimeInMinutes < startTimeInMinutes || currentTimeInMinutes > endTimeInMinutes) {
-      throw new Error(`Waktu absen masuk hanya diperbolehkan antara ${schedule.check_in_start.slice(0, 5)} - ${schedule.check_in_end.slice(0, 5)}`);
+    // Add 15 minutes buffer before and after the scheduled time
+    const bufferMinutes = 15;
+    const bufferedStartTime = startTimeInMinutes - bufferMinutes;
+    const bufferedEndTime = endTimeInMinutes + bufferMinutes;
+
+    if (currentTimeInMinutes < bufferedStartTime || currentTimeInMinutes > bufferedEndTime) {
+      throw new Error(`Waktu absen masuk hanya diperbolehkan antara ${this.formatTime(bufferedStartTime)} - ${this.formatTime(bufferedEndTime)} WIB`);
     }
 
-    // Determine status (late or present)
+    // Determine status (late or present) based on original time without buffer
     const status = currentTimeInMinutes > startTimeInMinutes ? 'late' : 'present';
     return await AttendanceModel.create(userId, latitude, longitude, status);
   }
 
   static async checkOut(userId, latitude, longitude) {
     // Check if has checked in today
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const wibDate = new Date(now.getTime() + (7 * 60 * 60 * 1000));
+    const today = wibDate.toISOString().split('T')[0];
     const existingAttendance = await AttendanceModel.findByUserAndDate(userId, today);
     
     if (!existingAttendance) {
@@ -98,10 +124,16 @@ class AttendanceService {
       throw new Error('Jadwal absensi belum diatur oleh admin');
     }
 
-    const currentTime = new Date().toTimeString().split(' ')[0];
+    const wibTime = this.getWIBTime();
+    const [startHours, startMinutes] = schedule.check_out_start.split(':').map(Number);
+    const [endHours, endMinutes] = schedule.check_out_end.split(':').map(Number);
     
-    if (currentTime < schedule.check_out_start || currentTime > schedule.check_out_end) {
-      throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${schedule.check_out_start.slice(0, 5)} - ${schedule.check_out_end.slice(0, 5)}`);
+    const currentTimeInMinutes = wibTime.totalMinutes;
+    const startTimeInMinutes = startHours * 60 + startMinutes;
+    const endTimeInMinutes = endHours * 60 + endMinutes;
+
+    if (currentTimeInMinutes < startTimeInMinutes || currentTimeInMinutes > endTimeInMinutes) {
+      throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${schedule.check_out_start.slice(0, 5)} - ${schedule.check_out_end.slice(0, 5)} WIB`);
     }
 
     const result = await AttendanceModel.updateCheckOut(userId, latitude, longitude);
@@ -128,6 +160,12 @@ class AttendanceService {
 
   static toRadians(degrees) {
     return degrees * Math.PI / 180;
+  }
+
+  static formatTime(timeInMinutes) {
+    const hours = Math.floor(timeInMinutes / 60);
+    const minutes = timeInMinutes % 60;
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   }
 }
 
