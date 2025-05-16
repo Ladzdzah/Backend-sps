@@ -143,11 +143,11 @@ class AttendanceService {
 
     // Update the model with WIB date
     try {
-      const result = await AttendanceModel.updateCheckOut(userId, latitude, longitude);
-      if (result === 0) {
+    const result = await AttendanceModel.updateCheckOut(userId, latitude, longitude);
+    if (result === 0) {
         throw new Error('Tidak ada absensi masuk yang aktif untuk hari ini');
-      }
-      return result;
+    }
+    return result;
     } catch (error) {
       console.error('Check-out error:', error);
       throw new Error('Gagal melakukan check-out. Silakan coba lagi atau hubungi admin.');
