@@ -6,11 +6,23 @@ class AttendanceService {
   static async getUserAttendance(userId) {
     try {
       const attendance = await AttendanceModel.getAllByUser(userId);
-      return attendance.map(record => ({
-        ...record,
-        check_in_time: record.check_in_time ? this.convertToWIB(record.check_in_time) : null,
-        check_out_time: record.check_out_time ? this.convertToWIB(record.check_out_time) : null
-      }));
+      return attendance.map(record => {
+        // Ensure dates are properly formatted as ISO strings
+        const checkInTime = record.check_in_time ? this.convertToWIB(new Date(record.check_in_time)).toISOString() : null;
+        const checkOutTime = record.check_out_time ? this.convertToWIB(new Date(record.check_out_time)).toISOString() : null;
+        
+        return {
+          id: record.id,
+          user_id: record.user_id,
+          check_in_time: checkInTime,
+          check_out_time: checkOutTime,
+          check_in_location: record.check_in_location,
+          check_out_location: record.check_out_location,
+          status: record.status || 'present',
+          created_at: record.created_at ? new Date(record.created_at).toISOString() : null,
+          updated_at: record.updated_at ? new Date(record.updated_at).toISOString() : null
+        };
+      });
     } catch (error) {
       console.error('Error getting user attendance:', error);
       throw new Error('Gagal mengambil data absensi');
@@ -20,11 +32,23 @@ class AttendanceService {
   static async getAllAttendance() {
     try {
       const attendance = await AttendanceModel.getAll();
-      return attendance.map(record => ({
-        ...record,
-        check_in_time: record.check_in_time ? this.convertToWIB(record.check_in_time) : null,
-        check_out_time: record.check_out_time ? this.convertToWIB(record.check_out_time) : null
-      }));
+      return attendance.map(record => {
+        // Ensure dates are properly formatted as ISO strings
+        const checkInTime = record.check_in_time ? this.convertToWIB(new Date(record.check_in_time)).toISOString() : null;
+        const checkOutTime = record.check_out_time ? this.convertToWIB(new Date(record.check_out_time)).toISOString() : null;
+        
+        return {
+          id: record.id,
+          user_id: record.user_id,
+          check_in_time: checkInTime,
+          check_out_time: checkOutTime,
+          check_in_location: record.check_in_location,
+          check_out_location: record.check_out_location,
+          status: record.status || 'present',
+          created_at: record.created_at ? new Date(record.created_at).toISOString() : null,
+          updated_at: record.updated_at ? new Date(record.updated_at).toISOString() : null
+        };
+      });
     } catch (error) {
       console.error('Error getting all attendance:', error);
       throw new Error('Gagal mengambil data absensi');
