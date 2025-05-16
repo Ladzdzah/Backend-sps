@@ -7,20 +7,32 @@ const attendanceController = {
   getUserAttendance: async (req, res) => {
     try {
       const attendance = await AttendanceService.getUserAttendance(req.user.id);
-      res.json(attendance);
+      res.json({
+        success: true,
+        data: attendance
+      });
     } catch (error) {
       console.error("Error fetching user attendance:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Terjadi kesalahan saat mengambil data absensi'
+      });
     }
   },
 
   getAllAttendance: async (req, res) => {
     try {
       const attendance = await AttendanceService.getAllAttendance();
-      res.json(attendance);
+      res.json({
+        success: true,
+        data: attendance
+      });
     } catch (error) {
       console.error("Error fetching all attendance:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({
+        success: false,
+        error: error.message || 'Terjadi kesalahan saat mengambil data absensi'
+      });
     }
   },
 
@@ -28,56 +40,99 @@ const attendanceController = {
     try {
       const { latitude, longitude } = req.body;
       
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          success: false,
+          error: 'Data lokasi tidak lengkap'
+        });
+      }
+
       // Log request data
       console.log('Check-in request:', {
         userId: req.user.id,
         latitude,
         longitude,
-        timestamp: new Date().toISOString(),
-        headers: req.headers
-      });
-
-      // Get current schedule
-      const schedule = await AttendanceScheduleModel.get();
-      console.log('Current schedule:', schedule);
-
-      // Get office location
-      const officeLocation = await OfficeLocationModel.get();
-      console.log('Office location:', officeLocation);
-
-      // Check existing attendance
-      const today = new Date().toISOString().split('T')[0];
-      const existingAttendance = await AttendanceModel.findByUserAndDate(req.user.id, today);
-      console.log('Existing attendance:', existingAttendance);
-
-      await AttendanceService.checkIn(req.user.id, latitude, longitude);
-      
-      console.log('Check-in success:', {
-        userId: req.user.id,
         timestamp: new Date().toISOString()
       });
 
-      res.json({ message: "Absensi masuk berhasil" });
+      const result = await AttendanceService.checkIn(req.user.id, latitude, longitude);
+      
+      res.json({
+        success: true,
+        message: "Absensi masuk berhasil",
+        data: result
+      });
     } catch (error) {
       console.error('Check-in error:', {
         userId: req.user?.id,
         error: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString()
+        stack: error.stack
       });
 
-      res.status(400).json({ error: error.message });
+      // Determine appropriate status code based on error type
+      let statusCode = 500;
+      if (error.message.includes('sudah melakukan absensi') ||
+          error.message.includes('belum melakukan check-out')) {
+        statusCode = 400;
+      } else if (error.message.includes('di luar area kantor') ||
+                 error.message.includes('Waktu absen')) {
+        statusCode = 403;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        error: error.message
+      });
     }
   },
 
   checkOut: async (req, res) => {
     try {
       const { latitude, longitude } = req.body;
-      await AttendanceService.checkOut(req.user.id, latitude, longitude);
-      res.json({ message: "Absensi keluar berhasil" });
+
+      if (!latitude || !longitude) {
+        return res.status(400).json({
+          success: false,
+          error: 'Data lokasi tidak lengkap'
+        });
+      }
+
+      // Log request data
+      console.log('Check-out request:', {
+        userId: req.user.id,
+        latitude,
+        longitude,
+        timestamp: new Date().toISOString()
+      });
+
+      const result = await AttendanceService.checkOut(req.user.id, latitude, longitude);
+      
+      res.json({
+        success: true,
+        message: "Absensi keluar berhasil",
+        data: result
+      });
     } catch (error) {
-      console.error("Error checking out:", error);
-      res.status(400).json({ error: error.message });
+      console.error('Check-out error:', {
+        userId: req.user?.id,
+        error: error.message,
+        stack: error.stack
+      });
+
+      // Determine appropriate status code based on error type
+      let statusCode = 500;
+      if (error.message.includes('belum melakukan check-in') ||
+          error.message.includes('sudah melakukan check-out')) {
+        statusCode = 400;
+      } else if (error.message.includes('di luar area kantor') ||
+                 error.message.includes('Waktu absen')) {
+        statusCode = 403;
+      }
+
+      res.status(statusCode).json({
+        success: false,
+        error: error.message
+      });
     }
   }
 };

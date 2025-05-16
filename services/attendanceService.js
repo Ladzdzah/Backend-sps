@@ -4,153 +4,182 @@ const AttendanceScheduleModel = require('../models/attendanceScheduleModel');
 
 class AttendanceService {
   static async getUserAttendance(userId) {
-    return await AttendanceModel.getAllByUser(userId);
+    try {
+      const attendance = await AttendanceModel.getAllByUser(userId);
+      return attendance.map(record => ({
+        ...record,
+        check_in_time: record.check_in_time ? this.convertToWIB(record.check_in_time) : null,
+        check_out_time: record.check_out_time ? this.convertToWIB(record.check_out_time) : null
+      }));
+    } catch (error) {
+      console.error('Error getting user attendance:', error);
+      throw new Error('Gagal mengambil data absensi');
+    }
   }
 
   static async getAllAttendance() {
-    return await AttendanceModel.getAll();
+    try {
+      const attendance = await AttendanceModel.getAll();
+      return attendance.map(record => ({
+        ...record,
+        check_in_time: record.check_in_time ? this.convertToWIB(record.check_in_time) : null,
+        check_out_time: record.check_out_time ? this.convertToWIB(record.check_out_time) : null
+      }));
+    } catch (error) {
+      console.error('Error getting all attendance:', error);
+      throw new Error('Gagal mengambil data absensi');
+    }
+  }
+
+  static convertToWIB(date) {
+    return new Date(date.getTime() + (7 * 60 * 60 * 1000));
   }
 
   static getWIBTime() {
-    // Create date in UTC
     const now = new Date();
-    // Convert to WIB (UTC+7)
-    const wibOffset = 7 * 60; // 7 hours in minutes
+    const wibOffset = 7 * 60;
     const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
     const wibMinutes = utcMinutes + wibOffset;
     
-    // Handle day rollover
     const wibHours = Math.floor(wibMinutes / 60) % 24;
     const minutes = wibMinutes % 60;
     
     return {
       hours: wibHours,
       minutes: minutes,
-      totalMinutes: wibHours * 60 + minutes
+      totalMinutes: wibHours * 60 + minutes,
+      date: this.convertToWIB(now)
+    };
+  }
+
+  static async validateLocation(latitude, longitude) {
+    const officeLocation = await OfficeLocationModel.get();
+    if (!officeLocation) {
+      throw new Error('Lokasi kantor belum diatur oleh admin');
+    }
+
+    const distance = this.calculateDistance(
+      { latitude, longitude },
+      { latitude: officeLocation.lat, longitude: officeLocation.lng }
+    );
+
+    if (distance > officeLocation.radius) {
+      throw new Error(`Anda berada di luar area kantor (${Math.round(distance)}m dari kantor, maksimal ${officeLocation.radius}m)`);
+    }
+
+    return { distance, officeLocation };
+  }
+
+  static async validateSchedule(type = 'check_in') {
+    const schedule = await AttendanceScheduleModel.get();
+    if (!schedule) {
+      throw new Error('Jadwal absensi belum diatur oleh admin');
+    }
+
+    const wibTime = this.getWIBTime();
+    const [startHours, startMinutes] = schedule[`${type}_start`].split(':').map(Number);
+    const [endHours, endMinutes] = schedule[`${type}_end`].split(':').map(Number);
+    
+    const currentTimeInMinutes = wibTime.totalMinutes;
+    const startTimeInMinutes = startHours * 60 + startMinutes;
+    const endTimeInMinutes = endHours * 60 + endMinutes;
+
+    // Add buffer time (15 minutes before and after)
+    const bufferMinutes = 15;
+    const bufferedStartTime = startTimeInMinutes - bufferMinutes;
+    const bufferedEndTime = endTimeInMinutes + bufferMinutes;
+
+    if (currentTimeInMinutes < bufferedStartTime || currentTimeInMinutes > bufferedEndTime) {
+      throw new Error(`Waktu absen ${type === 'check_in' ? 'masuk' : 'keluar'} hanya diperbolehkan antara ${this.formatTime(bufferedStartTime)} - ${this.formatTime(bufferedEndTime)} WIB`);
+    }
+
+    return {
+      isLate: type === 'check_in' && currentTimeInMinutes > startTimeInMinutes,
+      schedule
     };
   }
 
   static async checkIn(userId, latitude, longitude) {
-    // Check if already checked in today
-    const now = new Date();
-    const wibDate = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-    const today = wibDate.toISOString().split('T')[0];
-    const existingAttendance = await AttendanceModel.findByUserAndDate(userId, today);
-    
-    if (existingAttendance) {
-      if (!existingAttendance.check_out_time) {
-        throw new Error('Anda belum melakukan check-out untuk absensi sebelumnya');
+    try {
+      // Validate today's attendance
+      const wibTime = this.getWIBTime();
+      const today = wibTime.date.toISOString().split('T')[0];
+      const existingAttendance = await AttendanceModel.findByUserAndDate(userId, today);
+      
+      if (existingAttendance) {
+        if (!existingAttendance.check_out_time) {
+          throw new Error('Anda belum melakukan check-out untuk absensi sebelumnya');
+        }
+        throw new Error('Anda sudah melakukan absensi hari ini');
       }
-      throw new Error('Anda sudah melakukan absensi hari ini');
+
+      // Validate location
+      await this.validateLocation(latitude, longitude);
+
+      // Validate schedule
+      const { isLate } = await this.validateSchedule('check_in');
+
+      // Create attendance record
+      const status = isLate ? 'late' : 'present';
+      const result = await AttendanceModel.create(userId, latitude, longitude, status);
+      
+      console.log('Check-in success:', {
+        userId,
+        status,
+        timestamp: wibTime.date.toISOString()
+      });
+
+      return result;
+    } catch (error) {
+      console.error('Check-in error:', {
+        userId,
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
     }
-
-    // Check if within office radius
-    const officeLocation = await OfficeLocationModel.get();
-    if (!officeLocation) {
-      throw new Error('Lokasi kantor belum diatur oleh admin');
-    }
-
-    const distance = this.calculateDistance(
-      { latitude, longitude },
-      { latitude: officeLocation.lat, longitude: officeLocation.lng }
-    );
-
-    if (distance > officeLocation.radius) {
-      throw new Error(`Anda berada di luar area kantor (${Math.round(distance)}m dari kantor, maksimal ${officeLocation.radius}m)`);
-    }
-
-    // Check if within check-in time
-    const schedule = await AttendanceScheduleModel.get();
-    if (!schedule) {
-      throw new Error('Jadwal absensi belum diatur oleh admin');
-    }
-
-    const wibTime = this.getWIBTime();
-    const currentTimeInMinutes = wibTime.totalMinutes;
-
-    const [startHours, startMinutes] = schedule.check_in_start.split(':').map(Number);
-    const [endHours, endMinutes] = schedule.check_in_end.split(':').map(Number);
-    
-    const startTimeInMinutes = startHours * 60 + startMinutes;
-    const endTimeInMinutes = endHours * 60 + endMinutes;
-
-    // Add 15 minutes buffer before and after the scheduled time
-    const bufferMinutes = 15;
-    const bufferedStartTime = startTimeInMinutes - bufferMinutes;
-    const bufferedEndTime = endTimeInMinutes + bufferMinutes;
-
-    if (currentTimeInMinutes < bufferedStartTime || currentTimeInMinutes > bufferedEndTime) {
-      throw new Error(`Waktu absen masuk hanya diperbolehkan antara ${this.formatTime(bufferedStartTime)} - ${this.formatTime(bufferedEndTime)} WIB`);
-    }
-
-    // Determine status (late or present) based on original time without buffer
-    const status = currentTimeInMinutes > startTimeInMinutes ? 'late' : 'present';
-    return await AttendanceModel.create(userId, latitude, longitude, status);
   }
 
   static async checkOut(userId, latitude, longitude) {
-    // Check if has checked in today
-    const now = new Date();
-    const wibDate = new Date(now.getTime() + (7 * 60 * 60 * 1000));
-    const today = wibDate.toISOString().split('T')[0];
-    const existingAttendance = await AttendanceModel.findByUserAndDate(userId, today);
-    
-    if (!existingAttendance) {
-      throw new Error('Anda belum melakukan check-in hari ini');
-    }
-
-    if (existingAttendance.check_out_time) {
-      throw new Error('Anda sudah melakukan check-out hari ini');
-    }
-
-    // Check if within office radius
-    const officeLocation = await OfficeLocationModel.get();
-    if (!officeLocation) {
-      throw new Error('Lokasi kantor belum diatur oleh admin');
-    }
-
-    const distance = this.calculateDistance(
-      { latitude, longitude },
-      { latitude: officeLocation.lat, longitude: officeLocation.lng }
-    );
-
-    if (distance > officeLocation.radius) {
-      throw new Error(`Anda berada di luar area kantor (${Math.round(distance)}m dari kantor, maksimal ${officeLocation.radius}m)`);
-    }
-
-    // Check if within check-out time
-    const schedule = await AttendanceScheduleModel.get();
-    if (!schedule) {
-      throw new Error('Jadwal absensi belum diatur oleh admin');
-    }
-
-    const wibTime = this.getWIBTime();
-    const [startHours, startMinutes] = schedule.check_out_start.split(':').map(Number);
-    const [endHours, endMinutes] = schedule.check_out_end.split(':').map(Number);
-    
-    const currentTimeInMinutes = wibTime.totalMinutes;
-    const startTimeInMinutes = startHours * 60 + startMinutes;
-    const endTimeInMinutes = endHours * 60 + endMinutes;
-
-    // Add buffer time for check-out (15 minutes before and after)
-    const bufferMinutes = 15;
-    const bufferedStartTime = startTimeInMinutes - bufferMinutes;
-    const bufferedEndTime = endTimeInMinutes + bufferMinutes;
-
-    if (currentTimeInMinutes < bufferedStartTime || currentTimeInMinutes > bufferedEndTime) {
-      throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${this.formatTime(bufferedStartTime)} - ${this.formatTime(bufferedEndTime)} WIB`);
-    }
-
-    // Update the model with WIB date
     try {
-    const result = await AttendanceModel.updateCheckOut(userId, latitude, longitude);
-    if (result === 0) {
+      // Validate today's attendance
+      const wibTime = this.getWIBTime();
+      const today = wibTime.date.toISOString().split('T')[0];
+      const existingAttendance = await AttendanceModel.findByUserAndDate(userId, today);
+      
+      if (!existingAttendance) {
+        throw new Error('Anda belum melakukan check-in hari ini');
+      }
+
+      if (existingAttendance.check_out_time) {
+        throw new Error('Anda sudah melakukan check-out hari ini');
+      }
+
+      // Validate location
+      await this.validateLocation(latitude, longitude);
+
+      // Validate schedule
+      await this.validateSchedule('check_out');
+
+      // Update check-out time
+      const result = await AttendanceModel.updateCheckOut(userId, latitude, longitude);
+      if (result === 0) {
         throw new Error('Tidak ada absensi masuk yang aktif untuk hari ini');
-    }
-    return result;
+      }
+
+      console.log('Check-out success:', {
+        userId,
+        timestamp: wibTime.date.toISOString()
+      });
+
+      return result;
     } catch (error) {
-      console.error('Check-out error:', error);
-      throw new Error('Gagal melakukan check-out. Silakan coba lagi atau hubungi admin.');
+      console.error('Check-out error:', {
+        userId,
+        error: error.message,
+        stack: error.stack
+      });
+      throw error;
     }
   }
 
