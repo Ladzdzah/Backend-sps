@@ -27,5 +27,6 @@ router.get("/attendance", verifyToken, isAdmin, attendanceController.getAllAtten
 router.get("/attendance/:userId", verifyToken, isAdmin, attendanceController.getUserAttendance);
 router.post("/attendance/check-in", verifyToken, attendanceController.checkIn);
 router.post("/attendance/check-out", verifyToken, attendanceController.checkOut);
+router.get("/attendance/daily", verifyToken, isAdmin, attendanceController.getDailyAttendance);
 
 module.exports = router;
