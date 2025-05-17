@@ -46,6 +46,11 @@ class UserModel {
   static async delete(id) {
     await db.query('DELETE FROM users WHERE id = ?', [id]);
   }
+
+  static async getAllNonAdmin() {
+    const [users] = await db.query('SELECT id, username, full_name, role FROM users WHERE role != \'admin\'' );
+    return users;
+  }
 }
 
 module.exports = UserModel;
