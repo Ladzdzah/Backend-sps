@@ -64,6 +64,23 @@ class AttendanceModel {
     `);
     return rows;
   }
+
+  static async getAllByDate(date) {
+    const [rows] = await db.query(`
+      SELECT 
+        a.*,
+        CONVERT_TZ(a.check_in_time, '+00:00', '+07:00') as check_in_time,
+        CONVERT_TZ(a.check_out_time, '+00:00', '+07:00') as check_out_time,
+        u.username,
+        u.full_name
+      FROM attendance a
+      JOIN users u ON a.user_id = u.id
+      WHERE DATE(CONVERT_TZ(a.check_in_time, '+00:00', '+07:00')) = ?
+        AND u.role != 'admin'
+      ORDER BY a.check_in_time DESC
+    `, [date]);
+    return rows;
+  }
 }
 
 module.exports = AttendanceModel;
