@@ -62,7 +62,7 @@ class AttendanceModel {
         AND u.role != 'admin'
       ORDER BY a.check_in_time DESC
     `);
-    return rows.map(row => ({ ...row, status: row.status || 'Hadir' }));
+    return rows.map(row => ({ ...row, status: row.status || 'inside' }));
   }
 
   static async getAllByDate(date) {
