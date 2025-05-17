@@ -7,9 +7,9 @@ class AttendanceService {
     try {
       const attendance = await AttendanceModel.getAllByUser(userId);
       return attendance.map(record => {
-        // Ensure dates are properly formatted as ISO strings
-        const checkInTime = record.check_in_time ? this.convertToWIB(new Date(record.check_in_time)).toISOString() : null;
-        const checkOutTime = record.check_out_time ? this.convertToWIB(new Date(record.check_out_time)).toISOString() : null;
+        // Gunakan waktu dari database langsung (sudah WIB)
+        const checkInTime = record.check_in_time ? new Date(record.check_in_time).toISOString() : null;
+        const checkOutTime = record.check_out_time ? new Date(record.check_out_time).toISOString() : null;
         
         return {
           id: record.id,
@@ -33,9 +33,9 @@ class AttendanceService {
     try {
       const attendance = await AttendanceModel.getAll();
       return attendance.map(record => {
-        // Ensure dates are properly formatted as ISO strings
-        const checkInTime = record.check_in_time ? this.convertToWIB(new Date(record.check_in_time)).toISOString() : null;
-        const checkOutTime = record.check_out_time ? this.convertToWIB(new Date(record.check_out_time)).toISOString() : null;
+        // Gunakan waktu dari database langsung (sudah WIB)
+        const checkInTime = record.check_in_time ? new Date(record.check_in_time).toISOString() : null;
+        const checkOutTime = record.check_out_time ? new Date(record.check_out_time).toISOString() : null;
         
         return {
           id: record.id,
@@ -145,15 +145,15 @@ class AttendanceService {
 
       // Create attendance record
       const status = isLate ? 'late' : 'present';
-      const result = await AttendanceModel.create(userId, latitude, longitude, status);
+      const insertId = await AttendanceModel.create(userId, latitude, longitude, status);
       
-      console.log('Check-in success:', {
-        userId,
-        status,
-        timestamp: wibTime.date.toISOString()
-      });
-
-      return result;
+      // Ambil data absensi yang baru saja dibuat
+      const todayAttendance = await AttendanceModel.findByUserAndDate(userId, today);
+      
+      return {
+        ...todayAttendance,
+        status
+      };
     } catch (error) {
       console.error('Check-in error:', {
         userId,
