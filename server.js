@@ -44,6 +44,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/attendance", attendanceRoutes);
 
+app.get("/", (req, res) => {
+  res.send("Backend ABS-SPS is running.");
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Error:", err);
