@@ -68,9 +68,10 @@ class AttendanceModel {
   static async getAllByDate(date) {
     const [rows] = await db.query(`
       SELECT 
-        a.*,
+        a.id, a.user_id,
         CONVERT_TZ(a.check_in_time, '+00:00', '+07:00') as check_in_time,
         CONVERT_TZ(a.check_out_time, '+00:00', '+07:00') as check_out_time,
+        a.status,
         u.username,
         u.full_name
       FROM attendance a
@@ -79,7 +80,7 @@ class AttendanceModel {
         AND u.role != 'admin'
       ORDER BY a.check_in_time DESC
     `, [date]);
-    return rows.map(row => ({ ...row, status: row.status || 'Hadir' }));
+    return rows.map(row => ({ ...row, status: row.status || 'hadir' }));
   }
 }
 
