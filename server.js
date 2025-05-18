@@ -15,11 +15,7 @@ app.use(morgan("dev"));
 // Konfigurasi CORS
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000", 
-      "http://localhost:5173",
-      "https://brown-rail-652226.hostingersite.com"
-    ],
+    origin: ["http://localhost:3000", "http://localhost:5173", "https://absenspstpqalikhlas.site"],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -37,7 +33,7 @@ app.use(
     resave: false,
     saveUninitialized: false,
     cookie: {
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 24 * 60 * 60 * 1000, // 24 jam
     },
   })
