@@ -47,6 +47,10 @@ class AttendanceService {
     const now = new Date();
     const currentTime = now.toTimeString().split(' ')[0];
     
+    // Log waktu untuk debugging
+    console.log('Server time:', currentTime);
+    console.log('Check-in range:', schedule.check_in_start, '-', schedule.check_in_end);
+    
     if (currentTime < schedule.check_in_start || currentTime > schedule.check_in_end) {
       throw new Error(`Waktu absen masuk hanya diperbolehkan antara ${schedule.check_in_start.slice(0, 5)} - ${schedule.check_in_end.slice(0, 5)}`);
     }
@@ -89,7 +93,12 @@ class AttendanceService {
       throw new Error('Jadwal absensi belum diatur oleh admin');
     }
 
-    const currentTime = new Date().toTimeString().split(' ')[0];
+    const now = new Date();
+    const currentTime = now.toTimeString().split(' ')[0];
+    
+    // Log waktu untuk debugging
+    console.log('Server time:', currentTime);
+    console.log('Check-out range:', schedule.check_out_start, '-', schedule.check_out_end);
     
     if (currentTime < schedule.check_out_start || currentTime > schedule.check_out_end) {
       throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${schedule.check_out_start.slice(0, 5)} - ${schedule.check_out_end.slice(0, 5)}`);
