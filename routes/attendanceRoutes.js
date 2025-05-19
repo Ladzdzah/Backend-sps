@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { verifyToken } = require("../middleware/authMiddleware");
+const authMiddleware = require("../middleware/authMiddleware");
 const attendanceController = require("../controllers/attendanceController");
 
 // Get server time
@@ -13,12 +13,12 @@ router.get("/server-time", (req, res) => {
 });
 
 // Get user attendance
-router.get("/", verifyToken, attendanceController.getUserAttendance);
+router.get("/", authMiddleware.verifyToken, attendanceController.getUserAttendance);
 
 // Get all attendance (admin only)
-router.get("/all", verifyToken, attendanceController.getAllAttendance);
+router.get("/all", authMiddleware.verifyToken, attendanceController.getAllAttendance);
 
-router.post("/check-in", verifyToken, attendanceController.checkIn);
-router.post("/check-out", verifyToken, attendanceController.checkOut);
+router.post("/check-in", authMiddleware.verifyToken, attendanceController.checkIn);
+router.post("/check-out", authMiddleware.verifyToken, attendanceController.checkOut);
 
 module.exports = router;
