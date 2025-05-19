@@ -9,6 +9,9 @@ const attendanceRoutes = require("./routes/attendanceRoutes");
 
 const app = express();
 
+// Tambahkan di paling atas agar seluruh proses Node.js pakai zona waktu lokal
+process.env.TZ = 'Asia/Jakarta';
+
 // Middleware untuk logging
 app.use(morgan("dev"));
 
@@ -50,7 +53,9 @@ app.get("/", (req, res) => {
 
 // Tambahkan endpoint untuk mendapatkan waktu server
 app.get('/api/server-time', (req, res) => {
-  res.json({ serverTime: new Date().toISOString() });
+  const now = new Date();
+  console.log('Server time (Asia/Jakarta):', now.toString());
+  res.json({ serverTime: now.toISOString(), local: now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }) });
 });
 
 // Error handling middleware
