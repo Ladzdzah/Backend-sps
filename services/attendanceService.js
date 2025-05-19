@@ -45,17 +45,25 @@ class AttendanceService {
     }
 
     const now = new Date();
-    const currentTime = now.toTimeString().split(' ')[0];
+    
+    // Tambahkan toleransi 1 menit
+    const startTime = new Date();
+    const [startHours, startMinutes] = schedule.check_in_start.split(':').map(Number);
+    startTime.setHours(startHours, startMinutes - 1, 0);
+    
+    const endTime = new Date();
+    const [endHours, endMinutes] = schedule.check_in_end.split(':').map(Number);
+    endTime.setHours(endHours, endMinutes + 1, 0);
     
     // Log waktu untuk debugging
-    console.log('Server time:', currentTime);
-    console.log('Check-in range:', schedule.check_in_start, '-', schedule.check_in_end);
+    console.log('Server time:', now.toTimeString());
+    console.log('Check-in range:', startTime.toTimeString(), '-', endTime.toTimeString());
     
-    if (currentTime < schedule.check_in_start || currentTime > schedule.check_in_end) {
+    if (now < startTime || now > endTime) {
       throw new Error(`Waktu absen masuk hanya diperbolehkan antara ${schedule.check_in_start.slice(0, 5)} - ${schedule.check_in_end.slice(0, 5)}`);
     }
 
-    const status = currentTime > schedule.check_in_start ? 'late' : 'present';
+    const status = now > startTime ? 'late' : 'present';
     return await AttendanceModel.create(userId, latitude, longitude, status);
   }
 
@@ -94,13 +102,21 @@ class AttendanceService {
     }
 
     const now = new Date();
-    const currentTime = now.toTimeString().split(' ')[0];
+    
+    // Tambahkan toleransi 1 menit
+    const startTime = new Date();
+    const [startHours, startMinutes] = schedule.check_out_start.split(':').map(Number);
+    startTime.setHours(startHours, startMinutes - 1, 0);
+    
+    const endTime = new Date();
+    const [endHours, endMinutes] = schedule.check_out_end.split(':').map(Number);
+    endTime.setHours(endHours, endMinutes + 1, 0);
     
     // Log waktu untuk debugging
-    console.log('Server time:', currentTime);
-    console.log('Check-out range:', schedule.check_out_start, '-', schedule.check_out_end);
+    console.log('Server time:', now.toTimeString());
+    console.log('Check-out range:', startTime.toTimeString(), '-', endTime.toTimeString());
     
-    if (currentTime < schedule.check_out_start || currentTime > schedule.check_out_end) {
+    if (now < startTime || now > endTime) {
       throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${schedule.check_out_start.slice(0, 5)} - ${schedule.check_out_end.slice(0, 5)}`);
     }
 
