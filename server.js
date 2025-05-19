@@ -48,6 +48,11 @@ app.get("/", (req, res) => {
   res.send("Backend ABS-SPS is running.");
 });
 
+// Tambahkan endpoint untuk mendapatkan waktu server
+app.get('/api/server-time', (req, res) => {
+  res.json({ serverTime: new Date().toISOString() });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error("Error:", err);
