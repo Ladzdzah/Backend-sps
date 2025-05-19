@@ -45,25 +45,33 @@ class AttendanceService {
     }
 
     const now = new Date();
+    const currentTime = now.toTimeString().split(' ')[0];
     
-    // Tambahkan toleransi 1 menit
-    const startTime = new Date();
+    // Parse waktu dari string ke menit
+    const [currentHours, currentMinutes] = currentTime.split(':').map(Number);
     const [startHours, startMinutes] = schedule.check_in_start.split(':').map(Number);
-    startTime.setHours(startHours, startMinutes - 1, 0);
-    
-    const endTime = new Date();
     const [endHours, endMinutes] = schedule.check_in_end.split(':').map(Number);
-    endTime.setHours(endHours, endMinutes + 1, 0);
+    
+    // Konversi ke menit untuk perbandingan yang lebih mudah
+    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+    const startTotalMinutes = startHours * 60 + startMinutes;
+    const endTotalMinutes = endHours * 60 + endMinutes;
     
     // Log waktu untuk debugging
-    console.log('Server time:', now.toTimeString());
-    console.log('Check-in range:', startTime.toTimeString(), '-', endTime.toTimeString());
+    console.log('Server time:', currentTime);
+    console.log('Check-in range:', schedule.check_in_start, '-', schedule.check_in_end);
+    console.log('Time comparison:', {
+      current: currentTotalMinutes,
+      start: startTotalMinutes - 1,
+      end: endTotalMinutes + 1
+    });
     
-    if (now < startTime || now > endTime) {
+    // Tambahkan toleransi 1 menit
+    if (currentTotalMinutes < (startTotalMinutes - 1) || currentTotalMinutes > (endTotalMinutes + 1)) {
       throw new Error(`Waktu absen masuk hanya diperbolehkan antara ${schedule.check_in_start.slice(0, 5)} - ${schedule.check_in_end.slice(0, 5)}`);
     }
 
-    const status = now > startTime ? 'late' : 'present';
+    const status = currentTotalMinutes > startTotalMinutes ? 'late' : 'present';
     return await AttendanceModel.create(userId, latitude, longitude, status);
   }
 
@@ -102,21 +110,29 @@ class AttendanceService {
     }
 
     const now = new Date();
+    const currentTime = now.toTimeString().split(' ')[0];
     
-    // Tambahkan toleransi 1 menit
-    const startTime = new Date();
+    // Parse waktu dari string ke menit
+    const [currentHours, currentMinutes] = currentTime.split(':').map(Number);
     const [startHours, startMinutes] = schedule.check_out_start.split(':').map(Number);
-    startTime.setHours(startHours, startMinutes - 1, 0);
-    
-    const endTime = new Date();
     const [endHours, endMinutes] = schedule.check_out_end.split(':').map(Number);
-    endTime.setHours(endHours, endMinutes + 1, 0);
+    
+    // Konversi ke menit untuk perbandingan yang lebih mudah
+    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+    const startTotalMinutes = startHours * 60 + startMinutes;
+    const endTotalMinutes = endHours * 60 + endMinutes;
     
     // Log waktu untuk debugging
-    console.log('Server time:', now.toTimeString());
-    console.log('Check-out range:', startTime.toTimeString(), '-', endTime.toTimeString());
+    console.log('Server time:', currentTime);
+    console.log('Check-out range:', schedule.check_out_start, '-', schedule.check_out_end);
+    console.log('Time comparison:', {
+      current: currentTotalMinutes,
+      start: startTotalMinutes - 1,
+      end: endTotalMinutes + 1
+    });
     
-    if (now < startTime || now > endTime) {
+    // Tambahkan toleransi 1 menit
+    if (currentTotalMinutes < (startTotalMinutes - 1) || currentTotalMinutes > (endTotalMinutes + 1)) {
       throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${schedule.check_out_start.slice(0, 5)} - ${schedule.check_out_end.slice(0, 5)}`);
     }
 
