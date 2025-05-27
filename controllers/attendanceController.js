@@ -34,8 +34,8 @@ const attendanceController = {
 
   checkOut: async (req, res) => {
     try {
-      const { latitude, longitude } = req.body;
-      await AttendanceService.checkOut(req.user.id, latitude, longitude);
+      const { latitude, longitude, status } = req.body;
+      await AttendanceService.checkOut(req.user.id, latitude, longitude, status);
       res.json({ message: "Absensi keluar berhasil" });
     } catch (error) {
       console.error("Error checking out:", error);

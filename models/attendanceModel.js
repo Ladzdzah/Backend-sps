@@ -58,6 +58,17 @@ class AttendanceModel {
     `);
     return rows;
   }
+
+  static async createLateCheckOut(userId, latitude, longitude) {
+    const [result] = await db.query(
+      `INSERT INTO attendance 
+       (user_id, check_in_time, check_in_latitude, check_in_longitude, 
+        check_out_time, check_out_latitude, check_out_longitude, status) 
+       VALUES (?, NOW(), ?, ?, NOW(), ?, ?, 'late')`,
+      [userId, latitude, longitude, latitude, longitude]
+    );
+    return result.insertId;
+  }
 }
 
 module.exports = AttendanceModel;
