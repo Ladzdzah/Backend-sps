@@ -2,12 +2,13 @@ const db = require('../config/db');
 
 class AttendanceModel {
   static async findByUserAndDate(userId, date) {
-    const [attendance] = await db.query(
+    const [rows] = await db.query(
       `SELECT * FROM attendance 
-       WHERE user_id = ? AND DATE(check_in_time) = ?`,
+       WHERE user_id = ? 
+       AND DATE(COALESCE(check_in_time, check_out_time)) = ?`,
       [userId, date]
     );
-    return attendance[0];
+    return rows[0];
   }
 
   static async create(userId, latitude, longitude, status) {
@@ -35,9 +36,13 @@ class AttendanceModel {
       `UPDATE attendance 
        SET check_out_time = NOW(),
            check_out_latitude = ?,
-           check_out_longitude = ?
+           check_out_longitude = ?,
+           status = CASE 
+             WHEN check_in_time IS NULL THEN 'late'
+             ELSE 'present'
+           END
        WHERE user_id = ? 
-       AND DATE(check_in_time) = CURDATE()
+       AND DATE(COALESCE(check_in_time, check_out_time)) = CURDATE()
        AND check_out_time IS NULL`,
       [latitude, longitude, userId]
     );
@@ -62,8 +67,9 @@ class AttendanceModel {
         u.full_name,
         CASE 
           WHEN a.check_in_time IS NULL AND a.check_out_time IS NOT NULL THEN 'late'
-          WHEN a.status = 'late' THEN 'late'
-          ELSE a.status
+          WHEN a.check_in_time IS NOT NULL AND a.check_out_time IS NOT NULL THEN 'present'
+          WHEN a.check_in_time IS NOT NULL THEN 'present'
+          ELSE 'absent'
         END as status
       FROM attendance a
       JOIN users u ON a.user_id = u.id
