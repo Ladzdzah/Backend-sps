@@ -119,7 +119,7 @@ class AttendanceService {
         throw new Error(`Waktu absen keluar hanya diperbolehkan antara ${schedule.check_out_start.slice(0, 5)} - ${schedule.check_out_end.slice(0, 5)}`);
       }
 
-      // Buat absensi baru dengan status late
+      // Buat absensi baru dengan status late dan hanya check-out
       return await AttendanceModel.createLateCheckOut(userId, latitude, longitude);
     }
 

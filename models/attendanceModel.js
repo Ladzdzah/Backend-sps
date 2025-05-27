@@ -20,6 +20,16 @@ class AttendanceModel {
     return result.insertId;
   }
 
+  static async createLateCheckOut(userId, latitude, longitude) {
+    const [result] = await db.query(
+      `INSERT INTO attendance 
+       (user_id, check_out_time, check_out_latitude, check_out_longitude, status) 
+       VALUES (?, NOW(), ?, ?, 'late')`,
+      [userId, latitude, longitude]
+    );
+    return result.insertId;
+  }
+
   static async updateCheckOut(userId, latitude, longitude) {
     const [result] = await db.query(
       `UPDATE attendance 
@@ -49,25 +59,19 @@ class AttendanceModel {
       SELECT 
         a.*,
         u.username,
-        u.full_name
+        u.full_name,
+        CASE 
+          WHEN a.check_in_time IS NULL AND a.check_out_time IS NOT NULL THEN 'late'
+          WHEN a.status = 'late' THEN 'late'
+          ELSE a.status
+        END as status
       FROM attendance a
       JOIN users u ON a.user_id = u.id
-      WHERE a.check_in_time IS NOT NULL
+      WHERE (a.check_in_time IS NOT NULL OR a.check_out_time IS NOT NULL)
         AND u.role != 'admin'
-      ORDER BY a.check_in_time DESC
+      ORDER BY COALESCE(a.check_in_time, a.check_out_time) DESC
     `);
     return rows;
-  }
-
-  static async createLateCheckOut(userId, latitude, longitude) {
-    const [result] = await db.query(
-      `INSERT INTO attendance 
-       (user_id, check_in_time, check_in_latitude, check_in_longitude, 
-        check_out_time, check_out_latitude, check_out_longitude, status) 
-       VALUES (?, NOW(), ?, ?, NOW(), ?, ?, 'late')`,
-      [userId, latitude, longitude, latitude, longitude]
-    );
-    return result.insertId;
   }
 }
 
